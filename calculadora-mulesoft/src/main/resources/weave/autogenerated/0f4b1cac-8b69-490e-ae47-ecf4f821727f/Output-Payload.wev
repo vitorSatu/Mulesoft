@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_0f4b1cac_8b69_490e_ae47_ecf4f821727f_Output_Payload = {
+  resultado: Number, 
+  _?: Any
+}
+

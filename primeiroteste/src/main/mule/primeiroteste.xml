@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="a94e2de3-d169-42f5-b013-12a35cdcc63f" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="primeirotesteFlow" doc:id="6c6c4b9b-68e0-4c5f-8122-474b54c19750" >
+		<http:listener doc:name="Listener" doc:id="54822808-f8d4-4954-89fb-2b0ef6dbc915" path="/primeiroTeste" config-ref="HTTP_Listener_config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="1e099b8a-dd6a-4e32-942d-cf388e53a693" message="Requisição recebida!"/>
+	</flow>
+</mule>

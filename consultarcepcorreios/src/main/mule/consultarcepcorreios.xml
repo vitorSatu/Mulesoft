@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e87b374-abca-42d7-8387-6a004744330c" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="23597765-133e-41bc-9b94-19a92c77e1f3" >
+		<wsc:connection wsdlLocation="https://apps.correios.com.br/SigepMasterJPA/AtendeClienteService/AtendeCliente?wsdl" service="AtendeClienteService" port="AtendeClientePort" address="https://apps.correios.com.br/SigepMasterJPA/AtendeClienteService/AtendeCliente" />
+	</wsc:config>
+	<flow name="consultarcepcorreiosFlow" doc:id="3a577be2-679c-48f6-9fd3-ece1f630ae13" >
+		<http:listener doc:name="Listener" doc:id="66de1347-fdc5-43b7-ad7f-f5cbccde2858" config-ref="HTTP_Listener_config" path="/consultarCep"/>
+		<ee:transform doc:name="Transform Message" doc:id="579f13e7-267b-4b03-a921-8564d0aa3afe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://cliente.bean.master.sigep.bsb.correios.com.br/
+---
+{
+	ns0#consultaCEP: {
+		cep: attributes.queryParams.cep
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d5088ec0-fbad-41b5-b086-b5ce56216987" message="#[message]"/>
+		<wsc:consume doc:name="Consume" doc:id="338870c3-f4c9-4893-8af1-c5e12f720ac1" config-ref="Web_Service_Consumer_Config" operation="consultaCEP"/>
+		<ee:transform doc:name="Transform Message" doc:id="0a961c9f-fb70-422b-b61b-5c2b758dc6a2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0ns ns0 http://cliente.bean.master.sigep.bsb.correios.com.br/
+
+output application/json
+---
+payload.body.ns0#consultaCEPResponse.return]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

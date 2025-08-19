@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="soma" doc:id="f87da259-053a-42e1-8f39-0b490713113f" >
+		<ee:transform doc:name="Transform Message" doc:id="b39d8cd2-7f7b-48fa-9f7f-d7d1ff0bf1f6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var resultado = payload.primeiroValor + payload.segundoValor
+
+---
+{
+	resultado: resultado
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="subtracao" doc:id="078e4736-3b57-4adf-a64a-eb8ee9854a83" >
+		<ee:transform doc:name="Transform Message" doc:id="e5561761-c623-4533-a447-fbf6a6e2a9b1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var resultado = (payload.primeiroValor) - (payload.segundoValor)
+
+---
+{
+	resultado: resultado
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="multiplicacao" doc:id="0f4b1cac-8b69-490e-ae47-ecf4f821727f" >
+		<ee:transform doc:name="Transform Message" doc:id="69fd6e46-7b3f-4a6e-b034-c6224e7c803f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var resultado = (payload.primeiroValor) * (payload.segundoValor)
+
+---
+{
+	resultado: resultado
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="divisao" doc:id="28259a1f-943b-4bde-99eb-29bd08ccd933" >
+		<ee:transform doc:name="Transform Message" doc:id="5fd6a145-187b-4465-b78d-9b50a17e5ef0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var resultado = (payload.primeiroValor) / (payload.segundoValor)
+
+---
+{
+	resultado: resultado
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

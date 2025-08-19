@@ -1,0 +1,16 @@
+{
+  "sampleData": {
+    "6e1d38e7-c72a-4edc-b563-ea38d1ea30c9": {
+      "payload": "sample_data/defaultstringtype.dwl"
+    },
+    "c6721c0f-fb3e-4575-b47c-cd3abeb1a5bf": {
+      "payload": "sample_data/defaultnumbertype.dwl"
+    },
+    "579f13e7-267b-4b03-a921-8564d0aa3afe": {
+      "payload": "sample_data/defaultnumbertype_1.dwl"
+    },
+    "8cb745c3-bb00-4a83-b255-d2f21d754a3c": {
+      "payload": "sample_data/defaultstringtype_1.dwl"
+    }
+  }
+}

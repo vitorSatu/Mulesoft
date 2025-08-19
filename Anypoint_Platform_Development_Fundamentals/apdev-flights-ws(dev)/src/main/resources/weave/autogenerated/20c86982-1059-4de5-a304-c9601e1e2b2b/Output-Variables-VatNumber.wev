@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_20c86982_1059_4de5_a304_c9601e1e2b2b_Output_Variables_VatNumber = Null
+
