@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:request-config name="HTTP_Request_config" doc:name="HTTP Request config" doc:id="0eacb8d1-ddcc-4ea5-bbb3-1ee2414c91f5" >
+		<http:request-connection protocol="HTTPS" host="viacep.com.br" port="443" />
+	</http:request-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="5ed710cd-da80-43d2-8dac-b191e55dd513" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="consultacepFlow" doc:id="abf208ea-26b5-453d-a165-576ffc1aaf95" >
+		<http:listener doc:name="Listener" doc:id="34453533-9271-4f22-ab8c-91f3cf5e4917" config-ref="HTTP_Listener_config" path="/consultaCep"/>
+		<logger level="INFO" doc:name="Logger" doc:id="55ba8eff-067e-43de-a0f4-76785cda994d" message="#[message]"/>
+		<http:request doc:name="Request" doc:id="5fc83e67-9666-4757-9a9f-cb999f415d26" config-ref="HTTP_Request_config" path="/ws/{cep}/xml/">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"cep" : attributes.queryParams.cep
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="a86698bd-266b-4634-8196-525739c01be9" message="#[message]" />
+	</flow>
+</mule>
