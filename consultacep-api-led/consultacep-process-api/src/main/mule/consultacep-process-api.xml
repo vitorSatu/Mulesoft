@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<!--
+		PROCESS API
+		Camada de orquestracao e regras de negocio.
+		Responsabilidade: validar a entrada, aplicar regras (formato do CEP) e
+		chamar a System API - nunca fala com o ViaCEP diretamente.
+		Roda na porta 8082.
+	-->
+
+	<http:listener-config name="HTTP_Listener_config_process" doc:name="HTTP Listener config">
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+
+	<http:request-config name="HTTP_Request_config_systemapi" doc:name="HTTP Request config">
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+
+	<flow name="process-api-endereco-Flow">
+		<http:listener doc:name="Listener" config-ref="HTTP_Listener_config_process" path="/process/endereco/{cep}" allowedMethods="GET">
+			<http:response statusCode="#[vars.httpStatus default 200]"/>
+			<http:error-response statusCode="#[vars.httpStatus default 500]"/>
+		</http:listener>
+
+		<logger level="INFO" doc:name="Log Request" message="#['[PROCESS-API] Validando CEP: ' ++ attributes.uriParams.cep]"/>
+
+		<!-- Regra de negocio: CEP precisa ter exatamente 8 digitos numericos -->
+		<choice doc:name="CEP valido?">
+			<when expression="#[not(attributes.uriParams.cep matches /^[0-9]{8}$/)]">
+				<raise-error doc:name="Raise CEP_INVALIDO" type="APP:CEP_INVALIDO" description="CEP deve conter exatamente 8 digitos numericos"/>
+			</when>
+			<otherwise>
+				<http:request method="GET" doc:name="Request System API" config-ref="HTTP_Request_config_systemapi" path="/system/cep/{cep}">
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"cep" : attributes.uriParams.cep
+}]]]></http:uri-params>
+				</http:request>
+
+				<ee:transform doc:name="Adicionar metadado de processamento">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload ++ {
+	consultadoEm: now() as String {format: "yyyy-MM-dd'T'HH:mm:ss"}
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+
+		<error-handler>
+			<on-error-propagate type="APP:CEP_INVALIDO" doc:name="CEP invalido">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "CEP_INVALIDO",
+	message: "O CEP informado deve conter exatamente 8 digitos numericos"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[400]" doc:name="Set 400"/>
+			</on-error-propagate>
+			<on-error-propagate type="HTTP:NOT_FOUND" doc:name="Repassar 404 do System API">
+				<set-payload value="#[payload]" doc:name="Manter payload do System API"/>
+				<set-variable variableName="httpStatus" value="#[404]" doc:name="Set 404"/>
+			</on-error-propagate>
+			<on-error-propagate type="HTTP:CONNECTIVITY, HTTP:TIMEOUT" doc:name="System API indisponivel">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "SYSTEM_API_UNAVAILABLE",
+	message: "Nao foi possivel conectar a System API"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[503]" doc:name="Set 503"/>
+			</on-error-propagate>
+			<on-error-propagate type="ANY" doc:name="Erro generico">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "INTERNAL_ERROR",
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[500]" doc:name="Set 500"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

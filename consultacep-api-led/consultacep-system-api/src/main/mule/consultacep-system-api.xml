@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<!--
+		SYSTEM API
+		Camada mais proxima do sistema externo (ViaCEP).
+		Responsabilidade: falar com o ViaCEP e devolver uma resposta normalizada,
+		escondendo os detalhes de implementacao (URL, formato) do resto da organizacao.
+		Roda na porta 8081.
+	-->
+
+	<http:listener-config name="HTTP_Listener_config_system" doc:name="HTTP Listener config">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+
+	<http:request-config name="HTTP_Request_config_viacep" doc:name="HTTP Request config">
+		<http:request-connection protocol="HTTPS" host="viacep.com.br" port="443" />
+	</http:request-config>
+
+	<flow name="system-api-cep-Flow">
+		<http:listener doc:name="Listener" config-ref="HTTP_Listener_config_system" path="/system/cep/{cep}" allowedMethods="GET">
+			<http:response statusCode="#[vars.httpStatus default 200]"/>
+			<http:error-response statusCode="#[vars.httpStatus default 500]"/>
+		</http:listener>
+
+		<logger level="INFO" doc:name="Log Request" message="#['[SYSTEM-API] Consultando CEP: ' ++ attributes.uriParams.cep]"/>
+
+		<http:request method="GET" doc:name="Request ViaCEP" config-ref="HTTP_Request_config_viacep" path="/ws/{cep}/json/">
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"cep" : attributes.uriParams.cep
+}]]]></http:uri-params>
+		</http:request>
+
+		<!-- ViaCEP retorna 200 com {"erro": true} quando o CEP nao existe -->
+		<choice doc:name="CEP encontrado?">
+			<when expression="#[payload.erro default false]">
+				<raise-error doc:name="Raise CEP_NOT_FOUND" type="APP:CEP_NOT_FOUND" description="CEP nao encontrado na base do ViaCEP"/>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Normalizar resposta">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	cep: payload.cep,
+	logradouro: payload.logradouro,
+	bairro: payload.bairro,
+	cidade: payload.localidade,
+	uf: payload.uf,
+	ibge: payload.ibge
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+
+		<logger level="INFO" doc:name="Log Response" message="#[payload]"/>
+
+		<error-handler>
+			<on-error-propagate type="APP:CEP_NOT_FOUND" doc:name="CEP nao encontrado">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "CEP_NOT_FOUND",
+	message: "CEP nao encontrado no ViaCEP"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[404]" doc:name="Set 404"/>
+			</on-error-propagate>
+			<on-error-propagate type="HTTP:CONNECTIVITY, HTTP:TIMEOUT" doc:name="Erro de conectividade">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "SERVICE_UNAVAILABLE",
+	message: "Nao foi possivel conectar ao ViaCEP"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[503]" doc:name="Set 503"/>
+			</on-error-propagate>
+			<on-error-propagate type="ANY" doc:name="Erro generico">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "INTERNAL_ERROR",
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[500]" doc:name="Set 500"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

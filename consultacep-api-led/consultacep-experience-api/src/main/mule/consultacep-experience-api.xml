@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<!--
+		EXPERIENCE API
+		Camada voltada ao consumidor final (app mobile, site, parceiro).
+		Responsabilidade: expor uma interface amigavel pro canal que consome,
+		chamando a Process API - nunca fala com a System API diretamente.
+		Roda na porta 8083.
+	-->
+
+	<http:listener-config name="HTTP_Listener_config_experience" doc:name="HTTP Listener config">
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+
+	<http:request-config name="HTTP_Request_config_processapi" doc:name="HTTP Request config">
+		<http:request-connection host="localhost" port="8082" />
+	</http:request-config>
+
+	<flow name="experience-api-mobile-endereco-Flow">
+		<http:listener doc:name="Listener" config-ref="HTTP_Listener_config_experience" path="/v1/enderecos/{cep}" allowedMethods="GET">
+			<http:response statusCode="#[vars.httpStatus default 200]"/>
+			<http:error-response statusCode="#[vars.httpStatus default 500]"/>
+		</http:listener>
+
+		<logger level="INFO" doc:name="Log Request" message="#['[EXPERIENCE-API] Requisicao recebida para CEP: ' ++ attributes.uriParams.cep]"/>
+
+		<http:request method="GET" doc:name="Request Process API" config-ref="HTTP_Request_config_processapi" path="/process/endereco/{cep}">
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"cep" : attributes.uriParams.cep
+}]]]></http:uri-params>
+		</http:request>
+
+		<ee:transform doc:name="Formatar resposta para o app mobile">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	cep: payload.cep,
+	endereco: {
+		rua: payload.logradouro,
+		bairro: payload.bairro,
+		cidade: payload.cidade,
+		estado: payload.uf
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+		<logger level="INFO" doc:name="Log Response" message="#[payload]"/>
+
+		<error-handler>
+			<on-error-propagate type="HTTP:NOT_FOUND" doc:name="CEP nao encontrado">
+				<set-payload value="#[payload]" doc:name="Manter payload da Process API"/>
+				<set-variable variableName="httpStatus" value="#[404]" doc:name="Set 404"/>
+			</on-error-propagate>
+			<on-error-propagate type="HTTP:BAD_REQUEST" doc:name="CEP invalido">
+				<set-payload value="#[payload]" doc:name="Manter payload da Process API"/>
+				<set-variable variableName="httpStatus" value="#[400]" doc:name="Set 400"/>
+			</on-error-propagate>
+			<on-error-propagate type="HTTP:CONNECTIVITY, HTTP:TIMEOUT" doc:name="Process API indisponivel">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "PROCESS_API_UNAVAILABLE",
+	message: "Nao foi possivel conectar a Process API"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[503]" doc:name="Set 503"/>
+			</on-error-propagate>
+			<on-error-propagate type="ANY" doc:name="Erro generico">
+				<ee:transform doc:name="Set error body">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error: "INTERNAL_ERROR",
+	message: error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable variableName="httpStatus" value="#[500]" doc:name="Set 500"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
