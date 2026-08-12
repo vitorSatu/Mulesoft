@@ -19,7 +19,7 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
 
-	<http:request-config name="HTTP_Request_config_viacep" doc:name="HTTP Request config">
+	<http:request-config name="HTTP_Request_config_viacep" doc:name="HTTP Request config" responseTimeout="8000">
 		<http:request-connection protocol="HTTPS" host="viacep.com.br" port="443" />
 	</http:request-config>
 

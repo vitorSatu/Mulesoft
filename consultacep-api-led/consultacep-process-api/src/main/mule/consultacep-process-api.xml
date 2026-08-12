@@ -19,7 +19,7 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 		<http:listener-connection host="0.0.0.0" port="8082" />
 	</http:listener-config>
 
-	<http:request-config name="HTTP_Request_config_systemapi" doc:name="HTTP Request config">
+	<http:request-config name="HTTP_Request_config_systemapi" doc:name="HTTP Request config" responseTimeout="13000">
 		<http:request-connection host="localhost" port="8081" />
 	</http:request-config>
 
@@ -33,7 +33,7 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 
 		<!-- Regra de negocio: CEP precisa ter exatamente 8 digitos numericos -->
 		<choice doc:name="CEP valido?">
-			<when expression="#[not(attributes.uriParams.cep matches /^[0-9]{8}$/)]">
+			<when expression="#[not (attributes.uriParams.cep matches /^[0-9]{8}$/)]">
 				<raise-error doc:name="Raise CEP_INVALIDO" type="APP:CEP_INVALIDO" description="CEP deve conter exatamente 8 digitos numericos"/>
 			</when>
 			<otherwise>
